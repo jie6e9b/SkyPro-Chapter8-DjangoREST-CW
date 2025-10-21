@@ -5,32 +5,43 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Загружаем переменные окружения из файла .env
 load_dotenv()
 
+# Базовая директория проекта (папка, где расположен manage.py)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Ключ безопасности Django из переменной окружения
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
+
+# Режим отладки
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+
+# Список разрешённых хостов (доменов), с которых можно обращаться к приложению
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
-# CORS
+# ------------------------ CORS ------------------------
+# Настройки CORS (разрешённые источники запросов для фронтенда)
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
 ).split(",")
+
+# Разрешаем передачу cookies и заголовков авторизации
 CORS_ALLOW_CREDENTIALS = True
 
 INSTALLED_APPS = [
+    # Встроенные Django приложения
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Third-party
+    # Сторонние библиотеки
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
-    # Local apps
+    # Локальные приложения проекта
     "accounts",
     "habits",
     "telegram_app",
@@ -47,7 +58,11 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# ------------------------ Основные настройки ------------------------
+# Главный файл маршрутов
 ROOT_URLCONF = "config.urls"
+
+# ------------------------ Шаблоны ------------------------
 
 TEMPLATES = [
     {
@@ -65,6 +80,7 @@ TEMPLATES = [
     },
 ]
 
+# Точка входа для WSGI и ASGI
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
@@ -80,15 +96,7 @@ DATABASES = {
     }
 }
 
-# Use SQLite for tests to avoid external DB dependency
-if "pytest" in sys.modules:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
-        }
-    }
-
+# ------------------------ Валидаторы паролей ------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -104,15 +112,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# ------------------------ Локализация и время ------------------------
 LANGUAGE_CODE = "ru-ru"
 TIME_ZONE = os.getenv("TIME_ZONE", "Europe/Moscow")
 USE_I18N = True
 USE_TZ = True
 
+# ------------------------ Статика ------------------------
 STATIC_URL = "static/"
+
+# ------------------------ Настройки моделей ------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# DRF
+# ------------------------ Django REST Framework ------------------------
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -125,6 +137,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": int(os.getenv("PAGE_SIZE", 5)),
 }
 
+# ------------------------ Swagger / drf-spectacular ------------------------
 SPECTACULAR_SETTINGS = {
     "TITLE": "Habits API",
     "DESCRIPTION": "API для трекера полезных привычек",
@@ -132,16 +145,20 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# Simple JWT
+# ------------------------ JWT ------------------------
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", 60))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("REFRESH_TOKEN_DAYS", 7))),
 }
 
-# Celery
+
+# ------------------------ Celery ------------------------
+# Настройки брокера и бэкенда задач
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 CELERY_TIMEZONE = TIME_ZONE
 
-# Telegram
+
+# ------------------------ Telegram ------------------------
+# Токен Telegram-бота
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

@@ -53,12 +53,11 @@
 - DEBUG — true/false
 - ALLOWED_HOSTS — список хостов через запятую
 - CORS_ALLOWED_ORIGINS — список источников фронтенда через запятую
-- POSTGRES_DB/USER/PASSWORD/HOST/PORT — параметры БД (в тестах автоматически используется SQLite)
+- POSTGRES_DB/USER/PASSWORD/HOST/PORT — параметры БД 
 - CELERY_BROKER_URL / CELERY_RESULT_BACKEND — адреса Redis для Celery
 - TELEGRAM_BOT_TOKEN — токен Telegram-бота для отправки сообщений
 - TIME_ZONE — часовой пояс (например, Europe/Moscow)
 
-Примечание: В тестах БД переключается на SQLite in-memory, чтобы не требовать внешний Postgres.
 
 ## API и эндпоинты
 Базовый префикс: /api/

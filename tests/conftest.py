@@ -3,8 +3,16 @@ import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth.models import User
 
-# Ensure tests use SQLite settings override
-os.environ.setdefault("PYTEST_CURRENT_TEST", "1")
+
+# Use fast in-memory SQLite DB for tests to avoid external Postgres dependency
+@pytest.fixture(scope="session")
+def django_db_setup():
+    from django.conf import settings as dj_settings
+    dj_settings.DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
+        "ATOMIC_REQUESTS": False,
+    }
 
 
 @pytest.fixture()
