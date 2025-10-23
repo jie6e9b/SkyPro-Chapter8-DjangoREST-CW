@@ -1,0 +1,89 @@
+# Используем современную версию Compose
+version: "3.9"
+
+services:
+  # --- Основной Django-сервис ---
+  web:
+    build:
+      context: .                # Контекст сборки — текущая директория
+      dockerfile: Dockerfile    # Явно указываем Dockerfile
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8000:8000"             # Пробрасываем порт 8000 наружу
+    volumes:
+      - .:/app                  # Монтируем проект для live-разработки
+    env_file:
+      - .env                    # Подключаем файл с переменными окружения
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy # Django запустится после БД
+      redis:
+        condition: service_started # и после Redis
+
+  # --- База данных PostgreSQL ---
+  db:
+    image: postgres:16-alpine   # Лёгкий образ PostgreSQL
+    env_file:
+      - .env                    # Загружаем все переменные из .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Том для хранения данных
+    ports:
+      - "5432:5432"             # Открываем порт (для локальной отладки)
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # --- Redis (брокер задач + кэш) ---
+  redis:
+    image: redis:7-alpine       # Минимальный образ Redis
+    ports:
+      - "6379:6379"             # Пробрасываем порт (по желанию, можно убрать)
+
+  # --- Celery Worker ---
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
+  # --- Celery Beat (планировщик задач) ---
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
+# --- Том для хранения данных PostgreSQL ---
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
