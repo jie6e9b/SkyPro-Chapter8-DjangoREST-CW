@@ -1,22 +1,16 @@
-"""Представления для работы с привычками.
-Содержит ViewSet для CRUD собственных привычек и список публичных привычек.
-"""
-
-from rest_framework import viewsets, mixins
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework.decorators import action
-
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import ListAPIView
 from .models import Habit
-from .permissions import IsOwner
 from .serializers import HabitSerializer
 
 
 class HabitViewSet(viewsets.ModelViewSet):
-    """CRUD для привычек текущего пользователя."""
+    """Представления для работы с привычками.
+    Содержит ViewSet для CRUD собственных привычек"""
 
     serializer_class = HabitSerializer
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Возвращает только привычки текущего пользователя."""
@@ -26,21 +20,9 @@ class HabitViewSet(viewsets.ModelViewSet):
         """Автоматически проставляет владельца привычки."""
         serializer.save(user=self.request.user)
 
-    def get_permissions(self):
-        """Ограничивает доступ к объектам только владельцу."""
-        if self.action in ["list", "create", "retrieve", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsOwner()]
-        return super().get_permissions()
-
-
-обычный пас джон
-class PublicHabitListView(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Публичный список привычек (без авторизации)."""
+class PublicHabitListView(ListAPIView):
+    """Публичный список привычек (только для авторизованных пользователей)."""
 
     queryset = Habit.objects.filter(is_public=True)
     serializer_class = HabitSerializer
-    permission_classes = [AllowAny]
-
-    def list(self, request, *args, **kwargs):
-        """Возвращает список только публичных привычек."""
-        return super().list(request, *args, **kwargs)
+    permission_classes = [IsAuthenticated]
