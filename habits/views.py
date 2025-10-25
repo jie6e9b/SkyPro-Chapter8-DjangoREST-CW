@@ -33,6 +33,7 @@ class HabitViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
+обычный пас джон
 class PublicHabitListView(mixins.ListModelMixin, viewsets.GenericViewSet):
     """Публичный список привычек (без авторизации)."""
 
