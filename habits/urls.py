@@ -6,11 +6,10 @@ from .views import HabitViewSet, PublicHabitListView
 router = SimpleRouter()
 router.register(r"", HabitViewSet, basename="habit")
 
-public_router = SimpleRouter()
-public_router.register(r"public", PublicHabitListView, basename="public-habits")
-
 urlpatterns = [
-    # Public must go first so that /public/ doesn't get captured as a detail route pk
-    path("", include(public_router.urls)),
+    # Публичный список — обычное APIView
+    path("public/", PublicHabitListView.as_view(), name="public-habits"),
+
+    # Остальные маршруты ViewSet
     path("", include(router.urls)),
 ]

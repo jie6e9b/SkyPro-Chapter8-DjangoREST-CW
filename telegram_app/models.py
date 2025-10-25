@@ -8,4 +8,4 @@ class TelegramProfile(models.Model):
     chat_id = models.CharField(max_length=64, unique=True)
 
     def __str__(self):
-        return f"{self.user.username} -> {self.chat_id}"
+        return f"{self.user.email} -> {self.chat_id}"
