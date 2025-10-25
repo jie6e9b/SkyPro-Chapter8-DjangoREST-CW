@@ -31,8 +31,9 @@
 
 2) Создайте и заполните .env (см. .env.example)
 
-3) Установите зависимости через Poetry:
-  - poetry install
+3) Установите зависимости с помощью pip:
+  - python -m pip install -U pip
+  - pip install -r requirements-dev.txt
 
 4) Примените миграции БД:
 - python manage.py migrate
