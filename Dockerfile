@@ -17,9 +17,9 @@ RUN useradd --create-home --shell /bin/bash app
 WORKDIR /app
 
 # Копирование и установка зависимостей
-COPY requirements.txt ./
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-dev.txt
 
 # Копирование проекта с назначением владельца
 COPY --chown=app:app . .

@@ -6,16 +6,16 @@ def test_register_and_obtain_token(api_client):
     # Register
     resp = api_client.post(
         "/api/accounts/register/",
-        {"username": "newuser", "password": "Str0ngPass!", "email": "u@example.com"},
+        {"email": "u@example.com", "password": "Str0ngPass!"},
         format="json",
     )
     assert resp.status_code == 201
-    assert resp.data["username"] == "newuser"
+    assert resp.data["email"] == "u@example.com"
 
     # Obtain JWT
     resp2 = api_client.post(
         "/api/accounts/token/obtain/",
-        {"username": "newuser", "password": "Str0ngPass!"},
+        {"email": "u@example.com", "password": "Str0ngPass!"},
         format="json",
     )
     assert resp2.status_code == 200

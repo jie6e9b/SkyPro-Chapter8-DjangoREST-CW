@@ -26,9 +26,9 @@ def validate_habit_business_rules(attrs, instance: Habit | None = None):
     if duration_seconds > 120:
         raise serializers.ValidationError({"duration_seconds": "Не больше 120 секунд."})
 
-    # # Нельзя реже, чем 1 раз в 7 дней — покрыто валидатором MaxValueValidator(7)
-    # if not (1 <= periodicity <= 7):
-    #     raise serializers.ValidationError({"periodicity": "Значение от 1 до 7 дней."})
+    # Нельзя реже, чем 1 раз в 7 дней — покрыто валидатором MaxValueValidator(7)
+    if not (1 <= periodicity <= 7):
+        raise serializers.ValidationError({"periodicity": "Значение от 1 до 7 дней."})
 
     # Исключить одновременный выбор связанной привычки и вознаграждения
     if related_habit and reward:

@@ -5,20 +5,27 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
 
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Кастомный сериализатор для получения JWT токенов с использованием email вместо username."""
+
+    username_field = User.USERNAME_FIELD
+
+
 class RegistrationSerializer(serializers.ModelSerializer):
     """Сериализатор регистрации пользователя.
-    Поля: username, email, password. Пароль проходит проверку через
+    Поля: email, password. Пароль проходит проверку через
     validate_password и сохраняется в хэшированном виде."""
 
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ("username", "email", "password")
+        fields = ("email", "password")
 
     def validate_password(self, value):
         """Проверяет пароль на соответствие политике сложности Django."""
@@ -27,7 +34,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Создаёт пользователя и устанавливает хэш пароля."""
-        user = User(username=validated_data["username"], email=validated_data.get("email", ""))
-        user.set_password(validated_data["password"])
-        user.save()
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"]
+        )
         return user

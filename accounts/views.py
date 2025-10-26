@@ -7,8 +7,9 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegistrationSerializer
+from .serializers import RegistrationSerializer, EmailTokenObtainPairSerializer
 
 
 class RegisterView(APIView):
@@ -17,8 +18,14 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """Принимает username/email/password и создаёт пользователя."""
+        """Принимает email/password и создаёт пользователя."""
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class EmailTokenObtainPairView(TokenObtainPairView):
+    """Кастомное view для получения JWT токенов с использованием email вместо username."""
+
+    serializer_class = EmailTokenObtainPairSerializer
