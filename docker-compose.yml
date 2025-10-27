@@ -26,6 +26,18 @@ services:
       redis:
         condition: service_started # и после Redis
 
+  # --- Настройка веб сервера nginx ---
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - static_volume:/app/staticfiles
+    depends_on:
+      - web
+
   # --- База данных PostgreSQL ---
   db:
     image: postgres:16-alpine   # Лёгкий образ PostgreSQL
