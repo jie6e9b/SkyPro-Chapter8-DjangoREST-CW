@@ -11,3 +11,6 @@ redis>=5.0
 requests>=2.32
 # The project interacts with Docker SDK and requires <8.0
 docker>=7.1.0,<8.0.0
+
+# WSGI HTTP Server for production
+gunicorn>=21.2
