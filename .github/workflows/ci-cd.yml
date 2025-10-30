@@ -180,6 +180,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
+          envs: DOCKER_IMAGE,DOCKER_TAG,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           script: |
             # Переход в директорию проекта
             cd ${{ secrets.DEPLOY_PATH }}
@@ -187,26 +188,26 @@ jobs:
             # Логин в Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            # Остановка и удаление старых контейнеров
-            docker-compose down
+            # Установка переменной окружения для docker-compose
+            export DOCKER_IMAGE="${DOCKER_IMAGE}:${DOCKER_TAG}"
 
             # Загрузка нового образа
-            docker pull ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            docker pull ${DOCKER_IMAGE}
 
-            # Обновление docker-compose.yml для использования нового образа
-            export DOCKER_IMAGE=${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            # Остановка и удаление старых контейнеров
+            docker-compose -f docker-compose.yml down
 
             # Запуск новых контейнеров
-            docker-compose up -d
+            docker-compose -f docker-compose.yml up -d
 
             # Применение миграций
-            docker-compose exec -T web python manage.py migrate --noinput
+            docker-compose -f docker-compose.yml exec -T web python manage.py migrate --noinput
 
             # Сбор статики (если нужно)
-            # docker-compose exec -T web python manage.py collectstatic --noinput
+            # docker-compose -f docker-compose.yml exec -T web python manage.py collectstatic --noinput
 
             # Проверка статуса
-            docker-compose ps
+            docker-compose -f docker-compose.yml ps
 
             # Очистка старых образов
             docker image prune -af --filter "until=72h"

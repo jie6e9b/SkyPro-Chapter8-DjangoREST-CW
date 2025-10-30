@@ -4,7 +4,7 @@ version: "3.9"
 services:
   # --- Основной Django-сервис ---
   web:
-    image: ${DOCKER_IMAGE:-your-dockerhub-username/habits-api:latest}
+    image: ${DOCKER_IMAGE:-jie6e9b/habits-api:latest}
     command: >
       sh -c "
         python manage.py migrate &&
@@ -52,7 +52,7 @@ services:
 
   # --- Celery Worker ---
   celery:
-    image: ${DOCKER_IMAGE:-your-dockerhub-username/habits-api:latest}
+    image: ${DOCKER_IMAGE:-jie6e9b/habits-api:latest}
     command: celery -A config worker -l info
     env_file:
       - .env.prod
@@ -65,7 +65,7 @@ services:
 
   # --- Celery Beat (планировщик задач) ---
   celery-beat:
-    image: ${DOCKER_IMAGE:-your-dockerhub-username/habits-api:latest}
+    image: ${DOCKER_IMAGE:-jie6e9b/habits-api:latest}
     command: celery -A config beat -l info
     env_file:
       - .env.prod
