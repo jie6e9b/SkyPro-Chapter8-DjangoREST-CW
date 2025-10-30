@@ -119,7 +119,8 @@ USE_I18N = True
 USE_TZ = True
 
 # ------------------------ Статика ------------------------
-STATIC_URL = "static/"
+STATIC_URL = os.getenv("STATIC_URL", "/static/")
+STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles")
 
 # ------------------------ Настройки моделей ------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
