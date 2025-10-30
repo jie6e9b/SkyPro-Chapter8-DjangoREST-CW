@@ -36,6 +36,7 @@ pytest.xml
 
 # Environments
 .env
+.env.prod
 .venv
 env/
 venv/
@@ -93,4 +94,4 @@ local.py
 .env.production.local
 
 # Poetry
-poetry.lock
+poetry.lock.env.prod
