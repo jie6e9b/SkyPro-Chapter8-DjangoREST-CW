@@ -1,0 +1,91 @@
+# Docker Compose для разработки
+version: "3.9"
+
+services:
+  # --- Основной Django-сервис ---
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENV: dev                # Собираем с dev зависимостями (pytest, flake8)
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app                  # Монтируем код для live reload
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # --- База данных PostgreSQL ---
+  db:
+    image: postgres:16-alpine
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Redis (брокер задач + кэш) ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # --- Celery Worker ---
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENV: dev
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # --- Celery Beat (планировщик задач) ---
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENV: dev
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+# --- Volumes ---
+volumes:
+  postgres_data:
+  redis_data:

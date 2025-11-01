@@ -1,0 +1,251 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - feature-1
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/habits-api
+  DOCKER_TAG: ${{ github.sha }}
+
+jobs:
+  # ========== JOB 1: Линтеры ==========
+  lint:
+    name: Run Linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Run flake8
+        run: |
+          # Проверка всего проекта
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Более мягкая проверка с предупреждениями
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  # ========== JOB 2: Тесты ==========
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Create .env file for tests
+        run: |
+          cat > .env << EOF
+          SECRET_KEY=test-secret-key-for-ci
+          DEBUG=False
+          ALLOWED_HOSTS=localhost,127.0.0.1
+
+          # Database
+          POSTGRES_DB=testdb
+          POSTGRES_USER=testuser
+          POSTGRES_PASSWORD=testpass
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+
+          # Redis/Celery
+          CELERY_BROKER_URL=redis://localhost:6379/0
+          CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+          # JWT
+          ACCESS_TOKEN_MINUTES=60
+          REFRESH_TOKEN_DAYS=7
+
+          # Pagination
+          PAGE_SIZE=5
+          EOF
+
+      - name: Run migrations
+        run: |
+          python manage.py migrate --noinput
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=. --cov-report=xml --cov-report=term-missing -v
+
+      - name: Upload coverage to Codecov (optional)
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # ========== JOB 3: Сборка и загрузка Docker образа ==========
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            ENV=prod
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            ${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
+
+      - name: Image digest
+        run: echo "Image pushed with tag ${{ env.DOCKER_TAG }}"
+
+  # ========== JOB 4: Деплой на сервер ==========
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose and nginx config to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: "docker-compose.prod.yml,nginx.conf"
+          target: ${{ secrets.DEPLOY_PATH }}
+          strip_components: 0
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: DOCKER_IMAGE,DOCKER_TAG,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
+          script: |
+            # Переход в директорию проекта
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            # Переименование docker-compose.prod.yml в docker-compose.yml
+            mv -f docker-compose.prod.yml docker-compose.yml
+
+            # Логин в Docker Hub
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+            # Установка переменной окружения для docker-compose
+            export DOCKER_IMAGE="${DOCKER_IMAGE}:${DOCKER_TAG}"
+
+            # Загрузка нового образа
+            docker pull ${DOCKER_IMAGE}
+
+            # Остановка и удаление старых контейнеров
+            docker-compose down
+
+            # Запуск новых контейнеров
+            docker-compose up -d
+
+            # Применение миграций
+            docker-compose exec -T web python manage.py migrate --noinput
+
+            # Сбор статики (если нужно)
+            # docker-compose exec -T web python manage.py collectstatic --noinput
+
+            # Проверка статуса
+            docker-compose ps
+
+            # Очистка старых образов
+            docker image prune -af --filter "until=72h"
+
+            echo "Deployment completed successfully!"
+
+      - name: Check deployment health
+        run: |
+          sleep 15
+          curl -f http://${{ secrets.SERVER_HOST }}/api/schema/ || exit 1
+        continue-on-error: true
+
+  # ========== JOB 5: Уведомление (опционально) ==========
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [lint, test, build-and-push, deploy]
+    if: always()
+
+    steps:
+      - name: Send notification
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            # Здесь можно добавить отправку уведомления в Slack/Telegram
+          else
+            echo "❌ Deployment failed!"
+          fi

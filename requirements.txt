@@ -1,0 +1,16 @@
+# Production dependencies migrated from Poetry
+Django>=5.0,<6.0
+celery>=5.3
+psycopg2-binary>=2.9
+djangorestframework>=3.15
+django-cors-headers>=4.3
+python-dotenv>=1.0
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27
+redis>=5.0
+requests>=2.32
+# The project interacts with Docker SDK and requires <8.0
+docker>=7.1.0,<8.0.0
+
+# WSGI HTTP Server for production
+gunicorn>=21.2
