@@ -3,6 +3,7 @@
 Содержит эндпоинт регистрации пользователя.
 """
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -17,6 +18,10 @@ class RegisterView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=RegistrationSerializer,
+        responses={201: RegistrationSerializer},
+    )
     def post(self, request):
         """Принимает email/password и создаёт пользователя."""
         serializer = RegistrationSerializer(data=request.data)
